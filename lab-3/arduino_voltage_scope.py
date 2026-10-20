@@ -7,11 +7,8 @@ import time
 
 
 # Some constants that you need to change
-com_port = 'COM21'  # Enter your com port number here
-Kp = 299  # proportional gain
-Ki = 10 # Integral gain
-open_or_closed_loop = 0 # enter 0 for open loop, 1 for closed loop
-u = 149  # for open loop, specify input step magnitude number between 0 to 255. 
+com_port = 'COM21'  # Enter your com port number here <--------
+
 
 
 def read_voltage_sensor(arduino,num_bytes_per_int=2,num_bytes_per_float=4):
@@ -95,102 +92,105 @@ def write_int(arduino,I):
     
     return 0
 
+Kp = 299  # proportional gain
+Ki = 10 # Integral gain
+open_or_closed_loop = 0 # enter 0 for open loop, 1 for closed loop
+u_list = [149]  # for open loop, specify input step magnitude number between 0 to 255. 
+
+for u in u_list:
+    num_tries_setup_comms = 100
+    N = 1000
+        #reference_magnitude = np.concatenate( (np.zeros(250,dtype='B'), 50*np.ones(250,dtype='B')) )
+        #reference_direction = np.zeros(N,dtype='B')
 
 
+    voltage = np.zeros((N),dtype='float32')
+    tt = np.empty(N,dtype=int)
 
 
+    y_range = [0, 25]  # Range of possible Y values to display
 
-num_tries_setup_comms = 100
-N = 1000
-    #reference_magnitude = np.concatenate( (np.zeros(250,dtype='B'), 50*np.ones(250,dtype='B')) )
-    #reference_direction = np.zeros(N,dtype='B')
+        # Create figure for plotting
+    fig,ax = plt.subplots()
 
+    t = np.linspace(0,10,N)
 
-voltage = np.zeros((N),dtype='float32')
-tt = np.empty(N,dtype=int)
-
-
-y_range = [0, 25]  # Range of possible Y values to display
-
-    # Create figure for plotting
-fig,ax = plt.subplots()
-
-t = np.linspace(0,10,N)
-
-ax.set_ylim(y_range)
-ax.set_xlim([0,10])
+    ax.set_ylim(y_range)
+    ax.set_xlim([0,10])
 
 
-    # Create a blank line. We will update the line in animate
-line, = ax.plot(t, voltage)
+        # Create a blank line. We will update the line in animate
+    line, = ax.plot(t, voltage)
 
-    # Add labels
-plt.title('Output Voltage of Boost Converter')
-plt.xlabel('Samples')
-plt.ylabel('Voltage (V)')
+        # Add labels
+    plt.title('Output Voltage of Boost Converter')
+    plt.xlabel('Samples')
+    plt.ylabel('Voltage (V)')
 
-arduino = ser.Serial(port=com_port, baudrate=115200, timeout=0.1)
-arduino.reset_input_buffer()
-arduino.reset_output_buffer() 
-    #print('Input Buffer length:', arduino.in_waiting)
-    #print('Output buffer length:', arduino.out_waiting)
-mm = arduino.readlines()
-#time.sleep(5)
-    #print('Input Buffer length:', arduino.in_waiting)
-    #print('Output buffer length:', arduino.out_waiting)
-#print(mm)
-msg = ''
-for ii in range(num_tries_setup_comms):
-    m1 = arduino.readline()
-    #print('m1:', m1)
-        #print('Received message:', m1)
-    if m1 == b'Completed Setup.\r\n':
-        arduino.write(bytes('c', 'utf-8')) 
-        print('Arduino completed setup.')
-        #time.sleep(0.1)
-        msg = arduino.readline()
-        print('message:', msg)
-        break
-
-if msg == b'c\r\n':
-    print('Computer and Arduino communicating and ready.')
-else:
-    print('Computer and Arduino not communicating properly.')
-    print('Exiting.')
-    arduino.close()
-    sys.exit(-1)
+    arduino = ser.Serial(port=com_port, baudrate=115200, timeout=0.1)
+    arduino.reset_input_buffer()
+    arduino.reset_output_buffer() 
+        #print('Input Buffer length:', arduino.in_waiting)
+        #print('Output buffer length:', arduino.out_waiting)
+    mm = arduino.readlines()
     #time.sleep(5)
-    #print('Input Buffer length:', arduino.in_waiting)
-    #print('Output buffer length:', arduino.out_waiting)
+        #print('Input Buffer length:', arduino.in_waiting)
+        #print('Output buffer length:', arduino.out_waiting)
+    #print(mm)
+    msg = ''
+    for ii in range(num_tries_setup_comms):
+        m1 = arduino.readline()
+        #print('m1:', m1)
+            #print('Received message:', m1)
+        if m1 == b'Completed Setup.\r\n':
+            arduino.write(bytes('c', 'utf-8')) 
+            print('Arduino completed setup.')
+            #time.sleep(0.1)
+            msg = arduino.readline()
+            print('message:', msg)
+            break
 
-flag = write_float(arduino,Kp)
-if flag == -1:
-    arduino.close()
-    sys.exit(-1)
+    if msg == b'c\r\n':
+        print('Computer and Arduino communicating and ready.')
+    else:
+        print('Computer and Arduino not communicating properly.')
+        print('Exiting.')
+        arduino.close()
+        sys.exit(-1)
+        #time.sleep(5)
+        #print('Input Buffer length:', arduino.in_waiting)
+        #print('Output buffer length:', arduino.out_waiting)
 
-flag = write_float(arduino,Ki)
-if flag == -1:
-    arduino.close()
-    sys.exit(-1)
-
-flag = write_int(arduino,open_or_closed_loop)
-if flag == -1:
-    arduino.close()
-    sys.exit(-1)
-
-if open_or_closed_loop == 0:
-    flag = write_float(arduino,u)
+    flag = write_float(arduino,Kp)
     if flag == -1:
         arduino.close()
         sys.exit(-1)
 
+    flag = write_float(arduino,Ki)
+    if flag == -1:
+        arduino.close()
+        sys.exit(-1)
 
-ani = animation.FuncAnimation(fig,
-retrieve_voltage_samples,
-fargs=(arduino,voltage,N,line),
-interval=10,
-blit=True)
-plt.show()
+    flag = write_int(arduino,open_or_closed_loop)
+    if flag == -1:
+        arduino.close()
+        sys.exit(-1)
+
+    if open_or_closed_loop == 0:
+        flag = write_float(arduino,u)
+        if flag == -1:
+            arduino.close()
+            sys.exit(-1)
+
+
+    ani = animation.FuncAnimation(fig,
+    retrieve_voltage_samples,
+    fargs=(arduino,voltage,N,line),
+    interval=10,
+    blit=True)
+    plt.show()
+    input("Press enter to continue...")
+
 
 arduino.write(bytes('x', 'utf-8')) 
 print('Exiting.')      
